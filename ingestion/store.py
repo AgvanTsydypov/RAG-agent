@@ -24,6 +24,21 @@ CREATE INDEX IF NOT EXISTS chunks_embedding_hnsw
     ON chunks USING hnsw (embedding vector_cosine_ops);
 
 CREATE INDEX IF NOT EXISTS chunks_ticker_idx ON chunks (ticker);
+
+CREATE TABLE IF NOT EXISTS financials (
+    id          bigserial PRIMARY KEY,
+    ticker      text    NOT NULL,
+    statement   text    NOT NULL,
+    line_item   text    NOT NULL,
+    concept     text,
+    period      text    NOT NULL,
+    value       numeric NOT NULL,
+    created_at  timestamptz DEFAULT now()
+);
+
+ALTER TABLE financials ADD COLUMN IF NOT EXISTS concept text;
+
+CREATE INDEX IF NOT EXISTS financials_ticker_idx ON financials (ticker);
 """
 
 
@@ -73,3 +88,38 @@ def to_vector_literal(vec: list[float]) -> str:
     parameter as a vector instead of a plain float array.
     """
     return "[" + ",".join(repr(float(x)) for x in vec) + "]"
+
+def delete_financials(ticker: str) -> None:
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM financials WHERE ticker = %s", (ticker,))
+        conn.commit()
+
+
+def insert_financials(rows: list[tuple]) -> None:
+    """Rows: (ticker, statement, line_item, concept, period, value)."""
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.executemany(
+                "INSERT INTO financials "
+                "(ticker, statement, line_item, concept, period, value) "
+                "VALUES (%s, %s, %s, %s, %s, %s)",
+                rows,
+            )
+        conn.commit()
+
+
+def query_financials_rows(ticker: str, metric: str, limit: int = 50) -> list[tuple]:
+    """Read-only, parameterized lookup. Match either the human label or the
+    XBRL concept, so 'revenue' hits even when the label reads 'Net sales'."""
+    pattern = f"%{metric}%"
+    with connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT line_item, period, value FROM financials "
+                "WHERE ticker = %s AND (line_item ILIKE %s OR concept ILIKE %s) "
+                "ORDER BY line_item, period "
+                "LIMIT %s",
+                (ticker, pattern, pattern, limit),
+            )
+            return cur.fetchall()

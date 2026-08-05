@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     openai_api_key: str
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = 1536  # must match the vector(N) column below
+    reasoning_effort: str = "none"  # gpt-5.x: tools via chat.completions need 'none'
 
     # --- SEC EDGAR ---
     edgar_identity: str = ""
@@ -30,5 +31,8 @@ class Settings(BaseSettings):
 
     chat_model: str = "gpt-5.6-terra"  # swap in .env if this ID errors
     retrieval_top_k: int = 5
+
+    # --- Web search ---
+    tavily_api_key: str = ""
 
 settings = Settings()

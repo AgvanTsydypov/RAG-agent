@@ -7,6 +7,7 @@ edgartools>=5.0
 langchain-text-splitters>=0.3
 tiktoken>=0.8
 pgvector>=0.3
+tavily-python>=0.5
+pandas>=2.0
 
-
-"Data Engineer" OR "ML Engineer" OR "AI Engineer" OR "AI RESEARCHER" OR "LLM" OR "Greenplum"
+# "Data Engineer" OR "ML Engineer" OR "AI Engineer" OR "AI RESEARCHER" OR "LLM" OR "Greenplum"
