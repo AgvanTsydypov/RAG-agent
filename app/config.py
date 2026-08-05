@@ -1,3 +1,10 @@
+from dotenv import load_dotenv
+
+# Load .env into os.environ so libraries that read env vars directly
+# (LangSmith, LangChain) can see our configuration. pydantic-settings below
+# reads the same file into the typed Settings object for our own code.
+load_dotenv()
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

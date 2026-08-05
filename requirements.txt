@@ -11,5 +11,7 @@ tavily-python>=0.5
 pandas>=2.0
 langgraph>=1.0
 langchain-openai>=0.3
+langsmith>=0.1
+python-dotenv>=1.0
 
 # "Data Engineer" OR "ML Engineer" OR "AI Engineer" OR "AI RESEARCHER" OR "LLM" OR "Greenplum"
