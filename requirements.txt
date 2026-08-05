@@ -13,5 +13,6 @@ langgraph>=1.0
 langchain-openai>=0.3
 langsmith>=0.1
 python-dotenv>=1.0
+ragas>=0.2
 
 # "Data Engineer" OR "ML Engineer" OR "AI Engineer" OR "AI RESEARCHER" OR "LLM" OR "Greenplum"
