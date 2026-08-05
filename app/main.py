@@ -2,6 +2,12 @@ from contextlib import asynccontextmanager
 
 import psycopg
 from fastapi import FastAPI
+import uuid
+
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+
+from app.streaming import stream_agent
 
 from app.config import settings
 
@@ -49,3 +55,18 @@ def health() -> dict:
     db = check_database()
     healthy = db["connected"] and db.get("pgvector") is not None
     return {"status": "ok" if healthy else "degraded", "database": db}
+
+class ChatRequest(BaseModel):
+    question: str
+    thread_id: str | None = None
+
+
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    # A thread_id ties follow-up questions to the same agent memory.
+    thread_id = request.thread_id or str(uuid.uuid4())
+    return StreamingResponse(
+        stream_agent(request.question, thread_id),
+        media_type="text/event-stream",
+        headers={"X-Thread-Id": thread_id, "Cache-Control": "no-cache"},
+    )
