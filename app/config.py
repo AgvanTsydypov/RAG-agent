@@ -28,5 +28,7 @@ class Settings(BaseSettings):
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
+    chat_model: str = "gpt-5.6-terra"  # swap in .env if this ID errors
+    retrieval_top_k: int = 5
 
 settings = Settings()
