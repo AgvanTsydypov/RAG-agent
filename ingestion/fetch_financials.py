@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-
+import re
 import pandas as pd
 from edgar import Company, set_identity
 
@@ -11,6 +11,7 @@ META_COLS = {
     "level", "abstract", "dimension", "units", "decimals",
 }
 
+_PERIOD_RE = re.compile(r"\d{4}")  # a real period column contains a 4-digit year
 
 @dataclass
 class FinancialRow:
@@ -44,7 +45,7 @@ def _to_number(value) -> float | None:
 
 def _melt_statement(df: pd.DataFrame, ticker: str, statement: str) -> list[FinancialRow]:
     lower = {c: str(c).lower() for c in df.columns}
-    period_cols = [c for c in df.columns if lower[c] not in META_COLS]
+    period_cols = [c for c in df.columns if lower[c] not in META_COLS and _PERIOD_RE.search(str(c))]
     label_col = next((c for c in df.columns if lower[c] == "label"), None)
     concept_col = next((c for c in df.columns if lower[c] == "concept"), None)
 
