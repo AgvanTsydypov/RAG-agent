@@ -9,5 +9,7 @@ tiktoken>=0.8
 pgvector>=0.3
 tavily-python>=0.5
 pandas>=2.0
+langgraph>=1.0
+langchain-openai>=0.3
 
 # "Data Engineer" OR "ML Engineer" OR "AI Engineer" OR "AI RESEARCHER" OR "LLM" OR "Greenplum"
