@@ -11,6 +11,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY agent ./agent
+COPY rag ./rag
+COPY tools ./tools
+COPY ingestion ./ingestion
 
 # Cloud Run injects the port via the PORT env var (defaults to 8080).
 ENV PORT=8080

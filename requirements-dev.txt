@@ -1,0 +1,6 @@
+-r requirements.txt
+edgartools>=5.0
+langchain-text-splitters>=0.3
+tiktoken>=0.8
+pandas>=2.0
+ragas>=0.2

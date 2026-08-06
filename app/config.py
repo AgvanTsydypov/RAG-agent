@@ -31,6 +31,13 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
+        # Cloud Run mounts Cloud SQL as a unix socket at /cloudsql/<conn-name>.
+        # libpq reads the socket directory from the `host` query parameter.
+        if self.postgres_host.startswith("/"):
+            return (
+                f"postgresql://{self.postgres_user}:{self.postgres_password}@/"
+                f"{self.postgres_db}?host={self.postgres_host}"
+            )
         return (
             f"postgresql://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
