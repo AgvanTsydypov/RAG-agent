@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SEC Filings Research Agent</title>
+<style>
+  :root { --bg:#f7f7f8; --card:#fff; --line:#e5e5ea; --text:#1a1a1e; --muted:#6b6b76; --accent:#4f46e5; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5; }
+  .wrap { max-width:720px; margin:0 auto; padding:32px 20px 80px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 20px; font-size:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:16px; }
+  .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:0 0 8px; }
+  .card p { margin:0 0 8px; font-size:14px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { background:#f0f0f4; border:1px solid var(--line); border-radius:20px; padding:6px 12px;
+    font-size:13px; cursor:pointer; color:var(--text); }
+  .chip:hover { border-color:var(--accent); color:var(--accent); }
+  textarea { width:100%; border:1px solid var(--line); border-radius:10px; padding:12px;
+    font:inherit; resize:vertical; min-height:64px; }
+  textarea:focus { outline:none; border-color:var(--accent); }
+  .row { display:flex; justify-content:flex-end; margin-top:8px; }
+  button { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:10px 20px;
+    font:inherit; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:default; }
+  #steps { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+  .step { background:#eef0ff; color:var(--accent); border-radius:16px; padding:4px 10px; font-size:12px; }
+  #answer { white-space:pre-wrap; font-size:15px; }
+  #answer strong { font-weight:600; }
+  .err { color:#b91c1c; }
+  .empty { color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>SEC Filings Research Agent</h1>
+  <p class="sub">An agent that reasons over Apple and Microsoft 10-K filings, choosing its own tools.</p>
+
+  <div class="card">
+    <h2>What you can ask</h2>
+    <p>The agent has the latest 10-K filings for <strong>Apple (AAPL)</strong> and <strong>Microsoft (MSFT)</strong>. It can search the filing text, look up exact financial figures, do the math, and check the live web. Try:</p>
+    <div class="chips" id="examples">
+      <span class="chip">What supply chain risks does Apple describe?</span>
+      <span class="chip">How did Apple's net sales change from FY2023 to FY2024, in percent?</span>
+      <span class="chip">How did Apple's iPhone revenue trend from FY2023 to FY2025?</span>
+      <span class="chip">What risk factors does Microsoft describe about its business?</span>
+      <span class="chip">What was Apple's most recent quarterly revenue?</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <textarea id="q" placeholder="Ask about Apple or Microsoft filings..."></textarea>
+    <div class="row"><button id="ask">Ask</button></div>
+  </div>
+
+  <div class="card">
+    <div id="steps"></div>
+    <div id="answer" class="empty">The answer will stream here.</div>
+  </div>
+</div>
+
+<script>
+  const qEl = document.getElementById("q");
+  const askBtn = document.getElementById("ask");
+  const stepsEl = document.getElementById("steps");
+  const answerEl = document.getElementById("answer");
+
+  const TOOL_LABELS = {
+    retrieve_documents: "Searching filings",
+    query_financials: "Looking up financials",
+    calculator: "Calculating",
+    web_search: "Searching the web",
+  };
+
+  // Escape HTML, then render simple **bold** so the agent's markdown looks clean.
+  function format(text) {
+    const esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return esc.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  }
+
+  document.getElementById("examples").addEventListener("click", (e) => {
+    if (e.target.classList.contains("chip")) {
+      qEl.value = e.target.textContent;
+      qEl.focus();
+    }
+  });
+
+  qEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); }
+  });
+  askBtn.addEventListener("click", ask);
+
+  async function ask() {
+    const question = qEl.value.trim();
+    if (!question) return;
+
+    askBtn.disabled = true;
+    stepsEl.innerHTML = "";
+    answerEl.className = "";
+    answerEl.textContent = "";
+    let answerText = "";
+
+    try {
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop();  // keep the last, possibly-incomplete event
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith("data:")) continue;
+          const event = JSON.parse(line.slice(5).trim());
+
+          if (event.type === "step") {
+            const pill = document.createElement("span");
+            pill.className = "step";
+            pill.textContent = TOOL_LABELS[event.tool] || event.tool;
+            stepsEl.appendChild(pill);
+          } else if (event.type === "token") {
+            answerText += event.text;
+            answerEl.innerHTML = format(answerText);
+          } else if (event.type === "error") {
+            answerEl.innerHTML = '<span class="err">Error: ' + format(event.message) + "</span>";
+          }
+        }
+      }
+    } catch (err) {
+      answerEl.innerHTML = '<span class="err">Request failed: ' + err + "</span>";
+    } finally {
+      askBtn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>

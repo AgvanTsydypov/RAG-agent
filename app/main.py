@@ -10,6 +10,9 @@ from pydantic import BaseModel
 from app.streaming import stream_agent
 
 from app.config import settings
+from pathlib import Path
+
+from fastapi.responses import FileResponse
 
 
 def check_database() -> dict:
@@ -70,3 +73,10 @@ async def chat(request: ChatRequest):
         media_type="text/event-stream",
         headers={"X-Thread-Id": thread_id, "Cache-Control": "no-cache"},
     )
+
+_STATIC_DIR = Path(__file__).parent / "static"
+
+
+@app.get("/")
+def index():
+    return FileResponse(_STATIC_DIR / "index.html")
