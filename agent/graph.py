@@ -1,6 +1,6 @@
 from typing import Annotated, TypedDict
 
-from langchain_core.messages import AnyMessage, SystemMessage
+from langchain_core.messages import AnyMessage, RemoveMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
@@ -61,8 +61,11 @@ def finalize_node(state: AgentState) -> dict:
         + "\n\nYou have reached the tool-use limit. Answer now using only what "
         "has already been gathered."
     )
-    response = _llm_final.invoke([guard, *state["messages"]])
-    return {"messages": [response]}
+    # The last message holds tool calls that will never run. The API rejects
+    # calls without outputs, so drop it here and from the checkpointed thread.
+    pending = state["messages"][-1]
+    response = _llm_final.invoke([guard, *state["messages"][:-1]])
+    return {"messages": [RemoveMessage(id=pending.id), response]}
 
 
 def route(state: AgentState) -> str:

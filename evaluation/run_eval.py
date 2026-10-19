@@ -56,12 +56,14 @@ METRICS = [
 def _build_rows(collector) -> list[dict]:
     rows = []
     for item in EVAL_SET:
-        response, contexts = collector(item["question"])
+        if item.get("turns"):  # single-turn metrics; multi-turn lives in benchmark.py
+            continue
+        trace = collector(item["question"])
         rows.append(
             {
                 "user_input": item["question"],
-                "retrieved_contexts": contexts or [""],  # RAGAS needs a non-empty list
-                "response": response,
+                "retrieved_contexts": trace.contexts or [""],  # RAGAS needs a non-empty list
+                "response": trace.answer,
                 "reference": item["reference"],
             }
         )
